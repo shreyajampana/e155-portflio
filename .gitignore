@@ -1,0 +1,6 @@
+# Quarto output
+.quarto/
+_site/
+
+# macOS system files
+.DS_Store
