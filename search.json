@@ -1,0 +1,51 @@
+[
+  {
+    "objectID": "blog.html",
+    "href": "blog.html",
+    "title": "E155 Blog",
+    "section": "",
+    "text": "Post #1\n\n\nPersonal goals for E155\n\n\n\n\n\nAug 29, 2025\n\n\nShreya Jampana\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "E155 Portfolio",
+    "section": "",
+    "text": "Shreya Jampana is an Engineering student at Harvey Mudd College. Her academic interests lie primarily in analog and digital electronics, RF, and embedded systems with applications in biotechnology. Outside of the classroom, you can find her in the machine shop, camping at a national park, or reading with sunset view."
+  },
+  {
+    "objectID": "labs/labs.html",
+    "href": "labs/labs.html",
+    "title": "E155 Portfolio",
+    "section": "",
+    "text": "List of E155 Labs\nLab 1 - Board Assembly and Testing\nLab 2 - Multiplexed 7-Segment Display\nLab 3 - Keypad Scanner\nLab 4 - Digital Audio\nLab 5 - Interrupts\nLab 6 - The Internet of Things and Serial Peripheral Interface\nLab 7 - The Advanced Encryption Standard (AES)"
+  },
+  {
+    "objectID": "labs/labs.html#labs-overview",
+    "href": "labs/labs.html#labs-overview",
+    "title": "E155 Portfolio",
+    "section": "",
+    "text": "List of E155 Labs\nLab 1 - Board Assembly and Testing\nLab 2 - Multiplexed 7-Segment Display\nLab 3 - Keypad Scanner\nLab 4 - Digital Audio\nLab 5 - Interrupts\nLab 6 - The Internet of Things and Serial Peripheral Interface\nLab 7 - The Advanced Encryption Standard (AES)"
+  },
+  {
+    "objectID": "posts/first-post.html",
+    "href": "posts/first-post.html",
+    "title": "Post #1",
+    "section": "",
+    "text": "This semester, my personal goal in E-155 is to bridge a gap in my skill set: while I’ve always been drawn to analog circuitry and PCB design, I want to grow more confident in the digital side of hardware. I’m excited by the wide applications of embedded systems, from everyday devices to specialized applications in medicine and beyond, and I see this class as a chance to reframe how I think about hardware and software working together. I also want to get better at debugging with discipline rather than just trial and error. Another goal is to practice designing at the system level, balancing elegance with practicality, and then clearly communicating those decisions in reports and documentation. More broadly, I want to get comfortable with iteration and failure as part of the process, and to use the labs and project to experiment creatively and push myself beyond the bare minimum. After the labs and by the end of the semester, I hope to feel fluent enough in digital design to integrate it with my analog interests, and to carry that confidence into a really cool final project and beyond!"
+  },
+  {
+    "objectID": "resources.html",
+    "href": "resources.html",
+    "title": "E155 Portfolio",
+    "section": "",
+    "text": "E155 Course Website"
+  },
+  {
+    "objectID": "resources.html#resources",
+    "href": "resources.html#resources",
+    "title": "E155 Portfolio",
+    "section": "",
+    "text": "E155 Course Website"
+  }
+]
