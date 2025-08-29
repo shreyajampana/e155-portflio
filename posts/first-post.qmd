@@ -3,6 +3,9 @@ title: "Post #1"
 description: "Personal goals for E155"
 author: "Shreya Jampana"
 date: "8/29/25"
+categories:
+  - reflection
+  - labreport
 draft: false
 ---
 
