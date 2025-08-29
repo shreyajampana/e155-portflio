@@ -1,0 +1,16 @@
+---
+title: "E155 Portfolio"
+image: images/headshot.jpg
+about: 
+    template: jolla
+    links:
+        - icon: linkedin
+          text: LinkedIn
+          href: https://www.linkedin.com/in/shreya-jampana/
+        - icon: github
+          text: Github
+          href: https://github.com/shreyajampana
+
+---
+
+Shreya Jampana is an Engineering student at [Harvey Mudd College](https://hmc.edu). Her academic interests lie primarily in analog and digital electronics, RF, and embedded systems with applications in biotechnology. Outside of the classroom, you can find her in the machine shop, camping at a national park, or reading with sunset view. 

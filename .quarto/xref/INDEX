@@ -1,0 +1,44 @@
+{
+  "index.qmd": {
+    "index.html": "e0b79093"
+  },
+  "about.qmd": {
+    "about.html": "b4fc6bb6"
+  },
+  "posts/first-post.qmd": {
+    "first-post.html": "0b401305"
+  },
+  "blog.qmd": {
+    "blog.html": "97710edb"
+  },
+  "labs/lab1/lab1.qmd": {
+    "lab1.html": "f575146c"
+  },
+  "labs/lab2/lab2.qmd": {
+    "lab2.html": "2d8daf51"
+  },
+  "labs/lab6/lab6.qmd": {
+    "lab6.html": "6d68da05"
+  },
+  "labs/lab7/lab7.qmd": {
+    "lab7.html": "367df917"
+  },
+  "labs/lab5/lab5.qmd": {
+    "lab5.html": "6a288b68"
+  },
+  "labs/lab3/lab3.qmd": {
+    "lab3.html": "d1a21efa"
+  },
+  "labs/lab4/images.qmd": {
+    "images.html": "5c230ffc"
+  },
+  "labs/labs.qmd": {
+    "labs.html": "1332efdc"
+  },
+  "resources.qmd": {
+    "resources.html": "c6a33fed"
+  },
+  "labs/lab4/lab4.qmd": {
+    "lab4.html": "515a73ce"
+  }
+}
