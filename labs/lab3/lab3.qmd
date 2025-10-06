@@ -1,1 +1,1056 @@
 ## Lab 3: Keypad Scanner
+
+### Introduction
+In this lab, we learned how to use the FPGA to scan inputs from a 4x4 keypad. The multiplexed display from lab 2 was combined with a keypad to display user inputs. A scanning system was designed to read the inputs from keypad scanner, and a method for switch debouncing was also implemented. This lab required carefuly, thought-outTsynchronous sequential design
+
+### Design and Testing
+One of the biggest design considerations was the scanner FSM. I went through many iterations, but in order to meet all of the specifications of the lab, ended up going with the following design: 
+
+![Figure 1. Scanner FSM](images/lab3_1.jpeg)
+
+As shown in figure 1, the scanner FSM has one state for each column, and one for each row within each column. Given a row input, the FSM should transition from the column state to the state corresponding to the row input. If no rows are pressed, you transition to the next column and repeat the process. My FSM was originally simpler, but in order to account for edge cases in button pressing, I decided to make each row a distinct state. 
+
+The next big design consideration was debouncer FSM. One important consideration when working with the keypad matrix is switch bouncing. When a button is pressed, the input may take some time to settle. In order to not register the "bouncing" as multiple presses, a method for switch debouncing has to be implemented. I did this using another FSM, which interacts with my scanner FSM and the rest of my modules. 
+
+![Figure 2. Debouncer FSM](images/lab3_2.jpg)
+
+As shown in figure 2, the debouncer module has four states. The first state is idle, and as soon as a row press is detected, you transition to the second state, which is where debouncing happens. I implemented the debouncing using a counter. I chose an arbitrary debounce time of 50 ms, as I believed the key would stabilitize after that time. Since the debouncer operates on the slow clock (at 183 Hz), I determined the number of cycles the counter needed to iterate by multiplying the clock frequency by the debouncing time, which gave me a number of ~10. Therefore, as soon as the counter reaches 10, you transition to the next stage, in which a pulse is sent out. You turn the pulse off in the final stage, and go back to the idle state. This pulse allows for regulation of decoding, maintaining it to only happen after the debouncing is complete. 
+
+After designing the FSMs and all the interacting modules (explained in block diagram section below), I wired up the keypad. Seeing as our design was active high, I used pull down resistors for the rows. The picture of the wired circuit is shown below in figure 3.
+
+![Figure 3. Physical Circuit and Setup](images/lab3_3.jpg)
+
+In order to test the system, I wrote some test benches for the more crucial modules and tested the keypad physically for all edge cases. 
+
+### Technical Documentation
+
+The source code for the project can be found in the associated [Github repository](https://github.com/shreyajampana/e155-lab3).
+
+#### Block Diagram
+
+The block diagram for my system is shown below in figure 4. 
+
+![Figure 4. System block diagram](images/lab3_4.jpeg)
+
+The high speed oscillator lives in the top level module, and a slowClock module after it divides the high speed 48MHz clock into a slower 183Hz clock, which is used by the rest of the system. Following this, a scanner module takes in the row input and powers the column. It also sends out the 8-bit keyValue, which contains information about the row and column pressed. This module also outputs whether or not a row is pressed, which is used by the debouncer to debounce the press. The debouncer module outputs a pulse once debouncing is complete. Once the segDriver module receives a pulse, it takes the keyValue and decodes it into a four bit input. This module also shifts the old digit to the left, and puts the new digit on the right. These are sent to the switcher, which sends power to the seven segment (using enables) at the same frequency. The seven segment module then dipays the numbers. 
+
+#### Schematic
+
+The schematic for the system is shown below in figure 5. It includes the FPGA, the dual seven segment, and the keypad. 
+
+![Figure 5. System Schematic](images/lab3_5.jpg)
+
+### Results and Discussion
+
+The design meets all of the proficiency specs. It registers key presses, and moves old key presses to the left and puts new key presses on the right. All the LEDs are equally bright. The design also doesn't lock up when multiple keys are pressed.
+
+Throughout the lab, there were multiple bugs I resolved. I spent a long time finalizing the design of the FSMs and figuring out how to implement the debouncing logic. After quickly writing up the System Verilog, I uploaded my code and noticed that there were two 0s being displayed but no presses were being registered. This was the biggest bug, and was solved with a lot of simulation, checking the code to decode keyValue, and dealing with clock issues. 
+
+I originally had a smaller FSM, but changed it to account for every row case so that when one key is pressed, and a second is also pressed in the same column at the same time, when you let go of the original key, the second key registers. I still have some issues that I am debugging. For example, for the two rightmost columns, when I press one key and press another, it registers the press even though the other is held down. This only happens for the two rightmost columns. I also was not able to implement a synchronizer successfully. 
+
+### Conclusion
+
+Despite the small issues discussed above, my FPGA design was successfully able to scan inputs from a 4x4 keypad and debounce all the keys. In total, I spent about 60 hours on this lab. 
+
+### AI Prototype
+
+For this week's AI prototype, I tested two prompts. Here was prompt A: 
+
+Target device: Lattice iCE40 UP5K FPGA with internal high-speed oscillator (~20 MHz).
+
+Write synthesizable SystemVerilog to scan a 4x4 matrix keypad and display the last two hex keys pressed on a dual 7‑segment display. Implement: A clock divider that derives a scan clock on the order of 100–200 Hz from the internal oscillator. A keypad scanning controller that iterates one active‑low column at a time and samples active‑low rows, registering at most one key per press (debounce‑by‑design), ignoring additional presses while any key is held, and allowing a new registration only after release. A top level that updates two hex digits (older and most recent) when a new key is registered and drives a time‑multiplexed two‑digit 7‑segment display without visible flicker and with balanced brightness. Use idiomatic SystemVerilog (e.g., logic, always_ff, enumerated states for FSMs). Provide clean module boundaries and keep all state synchronous. Include brief comments explaining the design choices.
+
+Here was the code it produced: 
+
+Code: 
+
+```systemverilog
+// Generates a single-cycle tick at a programmable rate from a faster clk.
+// Example: With 20 MHz clk, DIV=100_000 -> 200 Hz tick.
+module clock_divider_tick #(
+    parameter int unsigned DIV = 100_000  // cycles per tick
+) (
+    input  logic clk,
+    input  logic reset_n,   // active-low synchronous reset
+    output logic tick       // 1-cycle pulse every DIV cycles
+);
+    localparam int W = $clog2(DIV);
+    logic [W-1:0] cnt;
+
+    always_ff @(posedge clk) begin
+        if (!reset_n) begin
+            cnt  <= '0;
+            tick <= 1'b0;
+        end else begin
+            if (cnt == DIV-1) begin
+                cnt  <= '0;
+                tick <= 1'b1;
+            end else begin
+                cnt  <= cnt + 1'b1;
+                tick <= 1'b0;
+            end
+        end
+    end
+endmodule
+
+
+// Two-flop synchronizer (vector-capable)
+module sync2 #(
+    parameter int W = 1
+) (
+    input  logic        clk,
+    input  logic        reset_n,
+    input  logic [W-1:0] d_async,
+    output logic [W-1:0] q_sync
+);
+    logic [W-1:0] s1;
+
+    always_ff @(posedge clk) begin
+        if (!reset_n) begin
+            s1     <= '1;     // rows are pulled-up; safe default high (no key)
+            q_sync <= '1;
+        end else begin
+            s1     <= d_async;
+            q_sync <= s1;
+        end
+    end
+endmodule
+
+
+// 4x4 matrix scanner (active-LOW rows/cols).
+// Debounce-by-design: registers at most one key per press. While any key
+// is held (across scan frames), further presses are ignored until release.
+module keypad_scanner_4x4 #(
+    // If your hardware uses different polarities, adjust here.
+    parameter bit ROW_ACTIVE_LOW = 1,
+    parameter bit COL_ACTIVE_LOW = 1
+) (
+    input  logic       clk,          // system clock (~20 MHz)
+    input  logic       reset_n,      // active-low sync reset
+    input  logic       scan_tick,    // ~100–200 Hz
+    input  logic [3:0] rows_in_sync, // synchronized rows
+    output logic [3:0] cols_out,     // driven to select 1 col at a time
+    output logic [3:0] key_code,     // hex 0..F per keypad mapping
+    output logic       key_pulse     // 1-cycle pulse when a new key is registered
+);
+    // FSM cycles columns; on each scan_tick select next column and sample rows.
+    typedef enum logic [1:0] {S_COL0, S_COL1, S_COL2, S_COL3} col_state_e;
+    col_state_e state, state_n;
+
+    logic [3:0] col_sel;   // one-hot (bit=1 means "selected" column)
+    logic [3:0] rows_smpl; // sampled (normalized active-high "pressed")
+    logic       any_pressed;
+    logic       latched_busy; // set after registering a key, cleared on full release
+
+    // Column drive: one column active at a time
+    always_comb begin
+        unique case (state)
+            S_COL0: col_sel = 4'b0001;
+            S_COL1: col_sel = 4'b0010;
+            S_COL2: col_sel = 4'b0100;
+            default: col_sel = 4'b1000;
+        endcase
+    end
+
+    // Active-LOW/active-HIGH drive for columns
+    always_comb begin
+        if (COL_ACTIVE_LOW) begin
+            // Selected column driven LOW (0), others HIGH (1)
+            cols_out = ~col_sel;
+        end else begin
+            cols_out = col_sel;
+        end
+    end
+
+    // Normalize rows: rows_norm=1 means "pressed in current column"
+    logic [3:0] rows_norm;
+    always_comb begin
+        if (ROW_ACTIVE_LOW) rows_norm = ~rows_in_sync;
+        else                rows_norm =  rows_in_sync;
+    end
+
+    // Sample rows on each scan tick (after column has been stable a full frame)
+    always_ff @(posedge clk) begin
+        if (!reset_n) rows_smpl <= '0;
+        else if (scan_tick)     rows_smpl <= rows_norm;
+    end
+    assign any_pressed = |rows_smpl;
+
+    // Next column on scan_tick
+    always_comb begin
+        state_n = state;
+        if (scan_tick) begin
+            unique case (state)
+                S_COL0: state_n = S_COL1;
+                S_COL1: state_n = S_COL2;
+                S_COL2: state_n = S_COL3;
+                default: state_n = S_COL0;
+            endcase
+        end
+    end
+    always_ff @(posedge clk) begin
+        if (!reset_n) state <= S_COL0;
+        else          state <= state_n;
+    end
+
+    // Register at most one key per continuous press:
+    // When not busy and exactly one row asserted, emit key_pulse and capture code.
+    function automatic logic is_onehot4(input logic [3:0] v);
+        return (v != 4'b0000) && ((v & (v - 1'b1)) == 4'b0000);
+    endfunction
+
+    // Encode row/col to hex (0..F). Mapping below is typical calculator style:
+    //   Col0   Col1   Col2   Col3
+    // R0  1      2      3      A
+    // R1  4      5      6      B
+    // R2  7      8      9      C
+    // R3  E      0      F      D
+    function automatic logic [3:0] encode_hex(
+        input logic [3:0] row_onehot,
+        input logic [3:0] col_onehot
+    );
+        int r, c;
+        begin
+            // onehot -> index
+            r = (row_onehot[0]) ? 0 :
+                (row_onehot[1]) ? 1 :
+                (row_onehot[2]) ? 2 : 3;
+            c = (col_onehot[0]) ? 0 :
+                (col_onehot[1]) ? 1 :
+                (col_onehot[2]) ? 2 : 3;
+            // lookup
+            unique case ({r[1:0], c[1:0]})
+                4'(0),4'(0): encode_hex = 4'h1; // r0 c0
+                default: begin end
+            endcase
+        end
+    endfunction
+
+    // The above would be clunky—use a compact LUT instead:
+    // Index = {row_idx[1:0], col_idx[1:0]}
+    function automatic logic [3:0] lut_hex(input int r, input int c);
+        logic [3:0] table [0:15];
+        begin
+            // Fill table
+            // r=0: 1,2,3,A
+            table[ 0] = 4'h1; table[ 1] = 4'h2; table[ 2] = 4'h3; table[ 3] = 4'hA;
+            // r=1: 4,5,6,B
+            table[ 4] = 4'h4; table[ 5] = 4'h5; table[ 6] = 4'h6; table[ 7] = 4'hB;
+            // r=2: 7,8,9,C
+            table[ 8] = 4'h7; table[ 9] = 4'h8; table[10] = 4'h9; table[11] = 4'hC;
+            // r=3: E,0,F,D
+            table[12] = 4'hE; table[13] = 4'h0; table[14] = 4'hF; table[15] = 4'hD;
+            lut_hex = table[(r<<2)|c];
+        end
+    endfunction
+
+    function automatic int onehot_to_idx(input logic [3:0] v);
+        begin
+            case (1'b1)
+                v[0]: onehot_to_idx = 0;
+                v[1]: onehot_to_idx = 1;
+                v[2]: onehot_to_idx = 2;
+                default: onehot_to_idx = 3;
+            endcase
+        end
+    endfunction
+
+    // Busy latch and key pulse generation
+    always_ff @(posedge clk) begin
+        if (!reset_n) begin
+            latched_busy <= 1'b0;
+            key_pulse    <= 1'b0;
+            key_code     <= 4'h0;
+        end else begin
+            key_pulse <= 1'b0; // default
+
+            if (!latched_busy) begin
+                // Only accept a new key when exactly one row is asserted
+                if (scan_tick && is_onehot4(rows_smpl)) begin
+                    int r = onehot_to_idx(rows_smpl);
+                    int c = onehot_to_idx(col_sel);
+                    key_code  <= lut_hex(r, c);
+                    key_pulse <= 1'b1;   // one-cycle pulse on system clk
+                    latched_busy <= 1'b1;
+                end
+            end else begin
+                // Wait for full release (no rows asserted across columns)
+                if (!any_pressed) begin
+                    // Note: any_pressed reflects sampled rows for the current column;
+                    // With a frame-by-frame scan at ~200 Hz, "release observed" is sufficient.
+                    latched_busy <= 1'b0;
+                end
+            end
+        end
+    end
+endmodule
+
+// Hex nibble to 7-seg segments (a..g), active-LOW output by default.
+module hex7seg #(
+    parameter bit ACTIVE_LOW_SEG = 1
+) (
+    input  logic [3:0] hex,
+    output logic [6:0] seg  // {a,b,c,d,e,f,g}
+);
+    logic [6:0] seg_h; // active-high internal truth table
+
+    always_comb begin
+        unique case (hex)
+            4'h0: seg_h = 7'b1111110;
+            4'h1: seg_h = 7'b0110000;
+            4'h2: seg_h = 7'b1101101;
+            4'h3: seg_h = 7'b1111001;
+            4'h4: seg_h = 7'b0110011;
+            4'h5: seg_h = 7'b1011011;
+            4'h6: seg_h = 7'b1011111;
+            4'h7: seg_h = 7'b1110000;
+            4'h8: seg_h = 7'b1111111;
+            4'h9: seg_h = 7'b1111011;
+            4'hA: seg_h = 7'b1110111;
+            4'hB: seg_h = 7'b0011111; // lower-case b
+            4'hC: seg_h = 7'b1001110;
+            4'hD: seg_h = 7'b0111101; // lower-case d
+            4'hE: seg_h = 7'b1001111;
+            default: seg_h = 7'b1000111; // F
+        endcase
+        seg = (ACTIVE_LOW_SEG) ? ~seg_h : seg_h;
+    end
+endmodule
+
+
+// Two-digit 7-seg time-multiplexer with balanced brightness.
+// refresh_tick should be ~2 kHz (so each digit ~1 kHz).
+module sevenseg_mux2 #(
+    parameter bit ACTIVE_LOW_SEG = 1,
+    parameter bit ACTIVE_LOW_DIG = 1
+) (
+    input  logic       clk,
+    input  logic       reset_n,
+    input  logic       refresh_tick,    // toggles active digit
+    input  logic [3:0] hex0,            // right (least recent) or "newest"
+    input  logic [3:0] hex1,            // left (older)
+    output logic [6:0] seg,             // a..g (dp omitted; add if needed)
+    output logic [1:0] dig_en           // [1]=left, [0]=right
+);
+    logic sel; // 0: show right, 1: show left
+    logic [3:0] nibble;
+    logic [6:0] seg_int;
+    logic [1:0] dig_h;  // active-high internal enables
+
+    always_ff @(posedge clk) begin
+        if (!reset_n) sel <= 1'b0;
+        else if (refresh_tick) sel <= ~sel;
+    end
+
+    always_comb begin
+        nibble = (sel) ? hex1 : hex0;
+        dig_h  = (sel) ? 2'b10 : 2'b01; // sel=1 -> left on; sel=0 -> right on
+    end
+
+    hex7seg #(.ACTIVE_LOW_SEG(ACTIVE_LOW_SEG)) u_hex (
+        .hex (nibble),
+        .seg (seg_int)
+    );
+
+    // Outputs with desired polarities
+    always_comb begin
+        seg   = seg_int;
+        dig_en = (ACTIVE_LOW_DIG) ? ~dig_h : dig_h;
+    end
+endmodule
+
+
+// Top-level: scans keypad and shows last two hex keys (hex1=older, hex0=most recent)
+// on a dual 7-seg display with time-multiplexing.
+module top_keypad_7seg #(
+    // Clocking (assume ~20 MHz HSOSC)
+    parameter int unsigned F_CLK_HZ     = 20_000_000,
+    parameter int unsigned SCAN_HZ      = 200,     // keypad scan frame rate
+    parameter int unsigned REFRESH_HZ   = 2_000,   // 2 kHz digit toggle (~1 kHz per digit)
+    // IO polarity
+    parameter bit ROW_ACTIVE_LOW = 1,
+    parameter bit COL_ACTIVE_LOW = 1,
+    parameter bit SEG_ACTIVE_LOW = 1,
+    parameter bit DIG_ACTIVE_LOW = 1
+) (
+    input  logic        clk,           // connect to HSOSC (~20 MHz)
+    input  logic        reset_n,       // active-low synchronous reset
+    // Keypad IO
+    input  logic [3:0]  rows_in,       // keypad rows (with external pull-ups or IO pull-ups)
+    output logic [3:0]  cols_out,      // keypad cols
+    // 7-seg IO
+    output logic [6:0]  seg,           // segments a..g (dp omitted)
+    output logic [1:0]  dig_en         // digit enables [1]=left, [0]=right
+);
+    // --- Ticks ---
+    localparam int unsigned DIV_SCAN    = (F_CLK_HZ / SCAN_HZ);
+    localparam int unsigned DIV_REFRESH = (F_CLK_HZ / REFRESH_HZ);
+
+    logic tick_scan, tick_refresh;
+
+    clock_divider_tick #(.DIV(DIV_SCAN)) u_div_scan (
+        .clk     (clk),
+        .reset_n (reset_n),
+        .tick    (tick_scan)
+    );
+
+    clock_divider_tick #(.DIV(DIV_REFRESH)) u_div_ref (
+        .clk     (clk),
+        .reset_n (reset_n),
+        .tick    (tick_refresh)
+    );
+
+    // --- Synchronize keypad rows ---
+    logic [3:0] rows_sync;
+    sync2 #(.W(4)) u_sync_rows (
+        .clk     (clk),
+        .reset_n (reset_n),
+        .d_async (rows_in),
+        .q_sync  (rows_sync)
+    );
+
+    // --- Scanner ---
+    logic [3:0] key_nibble;
+    logic       key_pulse;
+
+    keypad_scanner_4x4 #(
+        .ROW_ACTIVE_LOW (ROW_ACTIVE_LOW),
+        .COL_ACTIVE_LOW (COL_ACTIVE_LOW)
+    ) u_scan (
+        .clk         (clk),
+        .reset_n     (reset_n),
+        .scan_tick   (tick_scan),
+        .rows_in_sync(rows_sync),
+        .cols_out    (cols_out),
+        .key_code    (key_nibble),
+        .key_pulse   (key_pulse)
+    );
+
+    // --- Last two keys history ---
+    // hex0 = most recent, hex1 = older
+    logic [3:0] hex0, hex1;
+
+    always_ff @(posedge clk) begin
+        if (!reset_n) begin
+            hex0 <= 4'h0;
+            hex1 <= 4'h0;
+        end else if (key_pulse) begin
+            hex1 <= hex0;
+            hex0 <= key_nibble;
+        end
+    end
+
+    // --- 7-seg MUX ---
+    sevenseg_mux2 #(
+        .ACTIVE_LOW_SEG (SEG_ACTIVE_LOW),
+        .ACTIVE_LOW_DIG (DIG_ACTIVE_LOW)
+    ) u_mux (
+        .clk          (clk),
+        .reset_n      (reset_n),
+        .refresh_tick (tick_refresh),
+        .hex0         (hex0),  // show most recent on right
+        .hex1         (hex1),  // older on left
+        .seg          (seg),
+        .dig_en       (dig_en)
+    );
+endmodule
+
+```
+
+This is the code AI generated. It gave me a syntax error, and when I tried to give the error to AI, it told me that I have to declare the return type differently. I didn't fully understand the error or the code, because it used high-level functions. 
+
+Prompt B had three modular prompts: one for the one-shot registration (to debounce by design), one for keypad scanner controller, and one for integrate and display. Here is the code it produced:
+
+```systemverilog
+
+//------------------------------------------------------------------------------
+// Key One-Shot Registrar for 4x4 Keypad Scanners
+// - Assert new_key_pulse for 1 clk when a *new, debounced* press is detected
+// - Latch key_code_out at that instant
+// - Block further registrations until *full, debounced* release
+// - Debounce windows expressed in "samples" (e.g., column-scan ticks)
+//------------------------------------------------------------------------------
+module key_one_shot #(
+    // Number of *consecutive* samples required to confirm a press/release.
+    // Choose small integers given a scan rate of ~100–600 Hz.
+    parameter int PRESS_STABLE_SAMPLES   = 2,
+    parameter int RELEASE_STABLE_SAMPLES = 2
+)(
+    input  logic       clk,
+    input  logic       rst,           // synchronous active-high reset
+
+    // Drive this with your keypad scanner's sampling cadence
+    // (e.g., once per full matrix read or per-column step).
+    input  logic       sample_tick,
+
+    // Current instantaneous keypad state (already synchronized to clk):
+    input  logic       key_down,      // 1 if *any* key is presently detected
+    input  logic [3:0] key_code_in,   // code for the currently-detected key
+
+    // Registration outputs:
+    output logic       new_key_pulse, // 1 clk pulse on *new* debounced press
+    output logic [3:0] key_code_out,  // latched code for that new press
+    output logic       busy           // 1 while a key is debounced/held
+);
+
+    // ============================ State machine =============================
+    typedef enum logic [1:0] {
+        S_IDLE            = 2'd0,  // no key; waiting for a candidate press
+        S_DEBOUNCE_PRESS  = 2'd1,  // verifying stable press of one code
+        S_HELD            = 2'd2,  // press registered; ignore until release
+        S_DEBOUNCE_RELEASE= 2'd3   // verifying stable release (no key)
+    } state_e;
+
+    state_e state, state_n;
+
+    // Candidate key being evaluated during press debounce
+    logic [3:0] cand_code, cand_code_n;
+
+    // Counters for press / release stability (count sample_tick edges)
+    localparam int PW = (PRESS_STABLE_SAMPLES   > 1) ? $clog2(PRESS_STABLE_SAMPLES  ) : 1;
+    localparam int RW = (RELEASE_STABLE_SAMPLES > 1) ? $clog2(RELEASE_STABLE_SAMPLES) : 1;
+
+    logic [PW-1:0] press_cnt,   press_cnt_n;
+    logic [RW-1:0] release_cnt, release_cnt_n;
+
+    // Outputs (registered)
+    logic       new_key_pulse_n;
+    logic [3:0] key_code_out_n;
+    logic       busy_n;
+
+    // ============================== Next-state ==============================
+    always_comb begin
+        // Defaults: hold state/regs, clear pulse
+        state_n         = state;
+        cand_code_n     = cand_code;
+        press_cnt_n     = press_cnt;
+        release_cnt_n   = release_cnt;
+        new_key_pulse_n = 1'b0;
+        key_code_out_n  = key_code_out;
+        busy_n          = 1'b0;
+
+        unique case (state)
+            // -------- No key; watch for a candidate press --------
+            S_IDLE: begin
+                if (key_down && sample_tick) begin
+                    // Start debouncing a specific code
+                    cand_code_n = key_code_in;
+                    press_cnt_n = (PRESS_STABLE_SAMPLES > 1) ? '0 : press_cnt; // not used if 1
+                    state_n     = (PRESS_STABLE_SAMPLES > 1) ? S_DEBOUNCE_PRESS : S_HELD;
+                    if (PRESS_STABLE_SAMPLES == 1) begin
+                        // Immediate registration (edge users may set this)
+                        new_key_pulse_n = 1'b1;
+                        key_code_out_n  = key_code_in;
+                    end
+                end
+            end
+
+            // -------- Require N consecutive samples of same code --------
+            S_DEBOUNCE_PRESS: begin
+                busy_n = 1'b1;
+                if (sample_tick) begin
+                    if (!key_down) begin
+                        // Bounce back to idle if key vanished
+                        state_n     = S_IDLE;
+                        press_cnt_n = '0;
+                    end else if (key_code_in != cand_code) begin
+                        // Different code appeared during debounce -> restart with new candidate
+                        cand_code_n = key_code_in;
+                        press_cnt_n = '0;
+                    end else begin
+                        // Same code still present -> advance count
+                        if (press_cnt == PRESS_STABLE_SAMPLES-1) begin
+                            // Confirmed: register once and move to HELD
+                            new_key_pulse_n = 1'b1;
+                            key_code_out_n  = cand_code;
+                            state_n         = S_HELD;
+                        end else begin
+                            press_cnt_n = press_cnt + 1'b1;
+                        end
+                    end
+                end
+            end
+
+            // -------- Key is considered down; ignore further presses --------
+            S_HELD: begin
+                busy_n = 1'b1;
+                if (sample_tick && !key_down) begin
+                    // Start verifying stable release
+                    release_cnt_n = (RELEASE_STABLE_SAMPLES > 1) ? '0 : release_cnt;
+                    state_n       = (RELEASE_STABLE_SAMPLES > 1) ? S_DEBOUNCE_RELEASE : S_IDLE;
+                end
+            end
+
+            // -------- Require N consecutive samples of "no key" --------
+            S_DEBOUNCE_RELEASE: begin
+                busy_n = 1'b1;
+                if (sample_tick) begin
+                    if (key_down) begin
+                        // Key returned (bounce) -> still held
+                        state_n       = S_HELD;
+                        release_cnt_n = '0;
+                    end else begin
+                        if (release_cnt == RELEASE_STABLE_SAMPLES-1) begin
+                            state_n       = S_IDLE;
+                            release_cnt_n = '0;
+                        end else begin
+                            release_cnt_n = release_cnt + 1'b1;
+                        end
+                    end
+                end
+            end
+
+            default: begin
+                state_n = S_IDLE;
+            end
+        endcase
+    end
+
+    // =============================== Registers ==============================
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            state         <= S_IDLE;
+            cand_code     <= '0;
+            press_cnt     <= '0;
+            release_cnt   <= '0;
+            new_key_pulse <= 1'b0;
+            key_code_out  <= '0;
+            busy          <= 1'b0;
+        end else begin
+            state         <= state_n;
+            cand_code     <= cand_code_n;
+            press_cnt     <= press_cnt_n;
+            release_cnt   <= release_cnt_n;
+            new_key_pulse <= new_key_pulse_n; // 1-cycle pulse
+            key_code_out  <= key_code_out_n;
+            busy          <= busy_n;
+        end
+    end
+
+endmodule
+
+
+
+//------------------------------------------------------------------------------
+// 4x4 Keypad Column Scanner (active-low columns, active-low rows)
+// - Cycles columns using a provided scan_tick (derived from a divided clock).
+// - Samples rows after driving a column (DRIVE -> SAMPLE).
+// - Debounces both press and release, reports ONE stable key while held.
+// - key_code_out remains constant and key_down=1 while the held key stays pressed.
+//------------------------------------------------------------------------------
+module keypad_scan_4x4 #(
+    // Debounce intervals expressed in *column visits* (samples).
+    // Choose small values with a scan_tick ~100–600 Hz (per column).
+    parameter int PRESS_STABLE_SAMPLES   = 2,
+    parameter int RELEASE_STABLE_SAMPLES = 2
+)(
+    input  logic       clk,
+    input  logic       rst,          // synchronous active-high reset
+
+    // Advance the scanner one micro-step (DRIVE -> SAMPLE -> next column -> ...).
+    // Typical: scan_tick at ~150–600 Hz (per column).
+    input  logic       scan_tick,
+
+    // Matrix I/O (active-low)
+    input  logic [3:0] rows_n,       // from keypad rows (external pull-ups recommended)
+    output logic [3:0] cols_n,       // to keypad columns (drive ONE low at a time)
+
+    // Outputs
+    output logic       key_down,     // 1 while a debounced key is held
+    output logic [3:0] key_code_out  // stable hex code for the held key
+);
+
+    // ----------------------------- Utilities ------------------------------
+    // Encode the first active-low row (priority 0>1>2>3)
+    function automatic logic [1:0] encode_row(input logic [3:0] r_n);
+        if (!r_n[0])      return 2'd0;
+        else if (!r_n[1]) return 2'd1;
+        else if (!r_n[2]) return 2'd2;
+        else              return 2'd3;
+    endfunction
+
+    // LUT: (row, col) -> hex (1..D, with *→E, 0→0, #→F)
+    function automatic logic [3:0] lut_hex(input logic [1:0] r, input logic [1:0] c);
+        unique case ({r,c})
+            // row 0
+            {2'd0,2'd0}: return 4'h1; {2'd0,2'd1}: return 4'h2; {2'd0,2'd2}: return 4'h3; {2'd0,2'd3}: return 4'hA;
+            // row 1
+            {2'd1,2'd0}: return 4'h4; {2'd1,2'd1}: return 4'h5; {2'd1,2'd2}: return 4'h6; {2'd1,2'd3}: return 4'hB;
+            // row 2
+            {2'd2,2'd0}: return 4'h7; {2'd2,2'd1}: return 4'h8; {2'd2,2'd2}: return 4'h9; {2'd2,2'd3}: return 4'hC;
+            // row 3
+            {2'd3,2'd0}: return 4'hE; // '*'
+            {2'd3,2'd1}: return 4'h0; // '0'
+            {2'd3,2'd2}: return 4'hF; // '#'
+            {2'd3,2'd3}: return 4'hD; // 'D'
+            default:                  return 4'h0;
+        endcase
+    endfunction
+
+    // --------------------- Row synchronizers (active-low) ------------------
+    logic [3:0] rows_meta, rows_sync_n;
+    always_ff @(posedge clk) begin
+        rows_meta   <= rows_n;
+        rows_sync_n <= rows_meta;
+    end
+
+    // ------------------------- Column sequencer ---------------------------
+    typedef enum logic [1:0] { PH_DRIVE=2'd0, PH_SAMPLE=2'd1 } phase_e;
+    phase_e phase, phase_n;
+
+    logic [1:0] col_idx, col_idx_n;
+
+    // Drive exactly one column low (others high)
+    always_comb begin
+        cols_n = 4'b1111;
+        cols_n[col_idx] = 1'b0;
+    end
+
+    // ----------------------------- Scanner FSM ----------------------------
+    typedef enum logic [1:0] {
+        S_IDLE = 2'd0,          // no key held; searching
+        S_DEB_PRESS = 2'd1,     // verifying stable press of candidate (row,col)
+        S_HELD = 2'd2           // key held; verify release
+    } state_e;
+    state_e state, state_n;
+
+    // Candidate / held key (row/col indices)
+    logic [1:0] cand_row, cand_col, cand_row_n, cand_col_n;
+    logic [1:0] held_row, held_col, held_row_n, held_col_n;
+
+    // Debounce counters (count column visits when relevant)
+    localparam int PW = (PRESS_STABLE_SAMPLES   > 1) ? $clog2(PRESS_STABLE_SAMPLES  ) : 1;
+    localparam int RW = (RELEASE_STABLE_SAMPLES > 1) ? $clog2(RELEASE_STABLE_SAMPLES) : 1;
+
+    logic [PW-1:0] press_cnt,   press_cnt_n;
+    logic [RW-1:0] release_cnt, release_cnt_n;
+
+    // Registered outputs
+    logic       key_down_n;
+    logic [3:0] key_code_out_n;
+
+    // Helper: any row active during SAMPLE
+    logic any_row_active;
+    assign any_row_active = (rows_sync_n != 4'b1111);
+
+    // ---------------------------- Next-state ------------------------------
+    always_comb begin
+        // Hold defaults
+        phase_n        = phase;
+        col_idx_n      = col_idx;
+
+        state_n        = state;
+        cand_row_n     = cand_row;
+        cand_col_n     = cand_col;
+        held_row_n     = held_row;
+        held_col_n     = held_col;
+
+        press_cnt_n    = press_cnt;
+        release_cnt_n  = release_cnt;
+
+        key_down_n     = key_down;
+        key_code_out_n = key_code_out;
+
+        // Phase machine: DRIVE -> SAMPLE on tick; after SAMPLE, advance column.
+        if (scan_tick) begin
+            unique case (phase)
+                PH_DRIVE:  phase_n = PH_SAMPLE;
+                PH_SAMPLE: begin
+                    phase_n   = PH_DRIVE;
+                    col_idx_n = col_idx + 2'd1;
+                end
+                default: phase_n = PH_DRIVE;
+            endcase
+        end
+
+        // Scanner behavior only acts in SAMPLE phase (rows valid after DRIVE)
+        unique case (state)
+            // ------------------------- No key held -------------------------
+            S_IDLE: begin
+                key_down_n = 1'b0;
+                if (phase == PH_SAMPLE && scan_tick) begin
+                    if (any_row_active) begin
+                        cand_row_n  = encode_row(rows_sync_n);
+                        cand_col_n  = col_idx;
+                        press_cnt_n = (PRESS_STABLE_SAMPLES > 1) ? '0 : press_cnt;
+
+                        if (PRESS_STABLE_SAMPLES == 1) begin
+                            // Immediate acceptance
+                            held_row_n     = cand_row_n;
+                            held_col_n     = cand_col_n;
+                            key_code_out_n = lut_hex(cand_row_n, cand_col_n);
+                            key_down_n     = 1'b1;
+                            state_n        = S_HELD;
+                        end else begin
+                            state_n = S_DEB_PRESS;
+                        end
+                    end
+                end
+            end
+
+            // --------- Require N visits to the SAME (row,col) candidate ----
+            S_DEB_PRESS: begin
+                key_down_n = 1'b0;
+                if (phase == PH_SAMPLE && scan_tick) begin
+                    if (!any_row_active) begin
+                        // Key disappeared -> abandon
+                        press_cnt_n = '0;
+                        state_n     = S_IDLE;
+                    end else begin
+                        logic [1:0] this_row = encode_row(rows_sync_n);
+                        if (this_row == cand_row && col_idx == cand_col) begin
+                            // Same candidate observed again
+                            if (press_cnt == PRESS_STABLE_SAMPLES-1) begin
+                                held_row_n     = cand_row;
+                                held_col_n     = cand_col;
+                                key_code_out_n = lut_hex(cand_row, cand_col);
+                                key_down_n     = 1'b1;
+                                state_n        = S_HELD;
+                            end else begin
+                                press_cnt_n = press_cnt + 1'b1;
+                            end
+                        end else begin
+                            // Different key (or different column) -> restart candidate
+                            cand_row_n  = this_row;
+                            cand_col_n  = col_idx;
+                            press_cnt_n = '0;
+                        end
+                    end
+                end
+            end
+
+            // ------------------------ Key is held --------------------------
+            S_HELD: begin
+                key_down_n = 1'b1;
+                if (phase == PH_SAMPLE && scan_tick) begin
+                    // Only evaluate release when we are sampling the held column
+                    if (col_idx == held_col) begin
+                        if (rows_sync_n[held_row] == 1'b1) begin
+                            // The held row is HIGH (inactive) on its column -> count release
+                            if (RELEASE_STABLE_SAMPLES == 1) begin
+                                key_down_n    = 1'b0;
+                                release_cnt_n = '0;
+                                state_n       = S_IDLE;
+                            end else if (release_cnt == RELEASE_STABLE_SAMPLES-1) {
+                                key_down_n    = 1'b0;
+                                release_cnt_n = '0;
+                                state_n       = S_IDLE;
+                            end else begin
+                                release_cnt_n = release_cnt + 1'b1;
+                            end
+                        end else begin
+                            // Still pressed
+                            release_cnt_n = '0;
+                        end
+                    end
+                end
+            end
+
+            default: state_n = S_IDLE;
+        endcase
+    end
+
+    // ------------------------------ Registers -----------------------------
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            phase         <= PH_DRIVE;
+            col_idx       <= 2'd0;
+
+            state         <= S_IDLE;
+            cand_row      <= '0;
+            cand_col      <= '0;
+            held_row      <= '0;
+            held_col      <= '0;
+
+            press_cnt     <= '0;
+            release_cnt   <= '0;
+
+            key_down      <= 1'b0;
+            key_code_out  <= 4'h0;
+        end else begin
+            phase         <= phase_n;
+            col_idx       <= col_idx_n;
+
+            state         <= state_n;
+            cand_row      <= cand_row_n;
+            cand_col      <= cand_col_n;
+            held_row      <= held_row_n;
+            held_col      <= held_col_n;
+
+            press_cnt     <= press_cnt_n;
+            release_cnt   <= release_cnt_n;
+
+            key_down      <= key_down_n;
+            key_code_out  <= key_code_out_n;
+        end
+    end
+
+endmodule
+
+//------------------------------------------------------------------------------
+// Top: 4x4 Keypad -> Dual 7-seg (last two keys)
+// Target: Lattice iCE40 UP5K (internal HFOSC as root clock)
+//------------------------------------------------------------------------------
+
+// ------------------------------ Tick Divider -------------------------------
+module ce_divider #(
+    parameter int DIVISOR = 20_000  // Fclk / DIVISOR = enable rate (Hz if Fclk in Hz)
+) (
+    input  logic clk,
+    input  logic rst,     // synchronous active-high
+    output logic ce       // 1-cycle clock-enable pulse
+);
+    localparam int W = (DIVISOR <= 1) ? 1 : $clog2(DIVISOR);
+    logic [W-1:0] cnt;
+
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            cnt <= '0;
+            ce  <= 1'b0;
+        end else begin
+            if (cnt == DIVISOR-1) begin
+                cnt <= '0;
+                ce  <= 1'b1;
+            end else begin
+                cnt <= cnt + 1'b1;
+                ce  <= 1'b0;
+            end
+        end
+    end
+endmodule
+
+// ------------------------------ Top-level ----------------------------------
+module top_keypad_two7seg #(
+    // Nominal HFOSC frequency (adjust if you measure differently)
+    parameter int F_HZ                 = 20_000_000,
+
+    // Display timing: 2 kHz total refresh -> 1 kHz per digit (no flicker)
+    parameter int REFRESH_HZ_TOTAL     = 2_000,
+
+    // Keypad scan: column step rate (per column). 200 Hz is safe/balanced.
+    parameter int SCAN_HZ_PER_COLUMN   = 200,
+
+    // Display polarity (set to 0 if your board is active-high)
+    parameter bit SEG_ACTIVE_LOW       = 1,  // segments a..g
+    parameter bit DIGIT_ACTIVE_LOW     = 1   // digit enables [left,right]
+) (
+    input  logic       rst_n,         // active-low reset
+    // Keypad matrix (active-low)
+    input  logic [3:0] rows_n,        // from keypad (pull-ups recommended)
+    output logic [3:0] cols_n,        // to keypad (one low at a time)
+    // 7-segment outputs
+    output logic [6:0] seg,           // a..g
+    output logic [1:0] dig_en         // [0]=left, [1]=right
+);
+    // ----------------------- Clock: iCE40 HFOSC -----------------------
+    logic clk;
+    SB_HFOSC #(.CLKHF_DIV("0b00")) u_hfosc (  // see note below on freq
+        .CLKHFEN(1'b1),
+        .CLKHFPU(1'b1),
+        .CLKHF  (clk)
+    );
+    logic rst = ~rst_n;
+
+    // NOTE: HFOSC exact frequency depends on CLKHF_DIV; if your build yields
+    // ~24/48 MHz, set F_HZ accordingly or tweak divisors below.
+
+    // ------------------------ Clock-Enable ticks -----------------------
+    localparam int REFRESH_DIV  = (F_HZ / REFRESH_HZ_TOTAL);
+    localparam int SCAN_DIV     = (F_HZ / SCAN_HZ_PER_COLUMN);
+
+    logic refresh_tick, scan_tick;
+    ce_divider #(.DIVISOR(REFRESH_DIV)) u_refdiv (.clk(clk), .rst(rst), .ce(refresh_tick));
+    ce_divider #(.DIVISOR(SCAN_DIV   )) u_scndiv (.clk(clk), .rst(rst), .ce(scan_tick));
+
+    // --------------------- Keypad scan + one-shot ----------------------
+    logic       scan_key_down;
+    logic [3:0] scan_key_code;
+
+    // Scanner: cycles columns on scan_tick, debounces/holds one key
+    keypad_scan_4x4 #(
+        .PRESS_STABLE_SAMPLES  (2),
+        .RELEASE_STABLE_SAMPLES(2)
+    ) u_scan (
+        .clk         (clk),
+        .rst         (rst),
+        .scan_tick   (scan_tick),
+        .rows_n      (rows_n),
+        .cols_n      (cols_n),
+        .key_down    (scan_key_down),
+        .key_code_out(scan_key_code)
+    );
+
+    // One-shot: generate 1-cycle pulse when a new key is registered
+    // Scanner already debounces, so set samples=1 here (edge detect on held state)
+    logic       new_key_pulse;
+    logic [3:0] new_key_code;
+
+    key_one_shot #(
+        .PRESS_STABLE_SAMPLES  (1),
+        .RELEASE_STABLE_SAMPLES(1)
+    ) u_oneshot (
+        .clk          (clk),
+        .rst          (rst),
+        .sample_tick  (scan_tick),     // align with scanner cadence
+        .key_down     (scan_key_down),
+        .key_code_in  (scan_key_code),
+        .new_key_pulse(new_key_pulse),
+        .key_code_out (new_key_code),
+        .busy         (/* unused */)
+    );
+
+    // --------------------- Two-digit key history -----------------------
+    // Shift only on *new* key registration:
+    //   left  <- previous right (older)
+    //   right <- new key       (most recent)
+    logic [3:0] hex_left, hex_right;
+
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            hex_left  <= 4'h0;
+            hex_right <= 4'h0;
+        end else if (new_key_pulse) begin
+            hex_left  <= hex_right;
+            hex_right <= new_key_code;
+        end
+    end
+
+    // --------------------- 7-seg decode (assumed provided) --------------
+    // sevenSegment: hex[3:0] -> seg[6:0] (a..g). Assume active-low segments.
+    logic [6:0] seg_left, seg_right;
+    sevenSegment u_dec_left  (.hex(hex_left ), .seg(seg_left ));
+    sevenSegment u_dec_right (.hex(hex_right), .seg(seg_right));
+
+    // --------------------- Time-multiplex display -----------------------
+    // Toggle selected digit at REFRESH_HZ_TOTAL -> 1 kHz per digit
+    logic sel; // 0 = left, 1 = right
+
+    always_ff @(posedge clk) begin
+        if (rst) sel <= 1'b0;
+        else if (refresh_tick) sel <= ~sel;
+    end
+
+    // Segment mux
+    logic [6:0] seg_mux = (sel == 1'b0) ? seg_left : seg_right;
+
+    // Apply polarities (segments and digit enables)
+    always_comb begin
+        // segments
+        seg = SEG_ACTIVE_LOW ? seg_mux : ~seg_mux;
+
+        // digit enables: one on, one off
+        logic [1:0] en_raw;
+        // Active-low encoding for common-anode:
+        // sel=0 -> left on (0), right off (1) => 2'b10 (dig_en[0]=left, [1]=right)
+        // sel=1 -> left off (1), right on (0) => 2'b01
+        en_raw = (sel == 1'b0) ? 2'b10 : 2'b01;
+
+        dig_en = DIGIT_ACTIVE_LOW ? en_raw : ~en_raw;
+    end
+
+endmodule
+
+```
+
+The second prompt also had syntax errors, which when I fed back into AI, it told me what could possible cause them. The descriptions were good, but it was still a bit hard to parse through because I didn't understand the a lot of the syntax used in the AI code. Still, it was interesting (and a little dishreatening) to see it generate all the code and logic which took me many hours to come up with. 
+

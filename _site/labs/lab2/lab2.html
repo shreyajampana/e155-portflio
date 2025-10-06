@@ -20,6 +20,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -119,7 +154,7 @@ ul.task-list li input[type="checkbox"] {
  <span class="dropdown-text">Lab 3</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../../labs/lab4/lab4.qmd">
+    <a class="dropdown-item" href="../../labs/lab4/lab4.html">
  <span class="dropdown-text">Lab 4</span></a>
   </li>  
         <li>
@@ -156,7 +191,15 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#lab-2-multiplexed-7-segment-display" id="toc-lab-2-multiplexed-7-segment-display" class="nav-link active" data-scroll-target="#lab-2-multiplexed-7-segment-display">Lab 2: Multiplexed 7-Segment Display</a></li>
+  <li><a href="#lab-2-multiplexed-7-segment-display" id="toc-lab-2-multiplexed-7-segment-display" class="nav-link active" data-scroll-target="#lab-2-multiplexed-7-segment-display">Lab 2: Multiplexed 7-Segment Display</a>
+  <ul class="collapse">
+  <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#design-and-testing" id="toc-design-and-testing" class="nav-link" data-scroll-target="#design-and-testing">Design and Testing</a></li>
+  <li><a href="#technical-documentation" id="toc-technical-documentation" class="nav-link" data-scroll-target="#technical-documentation">Technical Documentation</a></li>
+  <li><a href="#results-and-discussion" id="toc-results-and-discussion" class="nav-link" data-scroll-target="#results-and-discussion">Results and Discussion</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#ai-prototype" id="toc-ai-prototype" class="nav-link" data-scroll-target="#ai-prototype">AI Prototype</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -168,8 +211,317 @@ ul.task-list li input[type="checkbox"] {
 
 <section id="lab-2-multiplexed-7-segment-display" class="level2">
 <h2 class="anchored" data-anchor-id="lab-2-multiplexed-7-segment-display">Lab 2: Multiplexed 7-Segment Display</h2>
+<section id="introduction" class="level3">
+<h3 class="anchored" data-anchor-id="introduction">Introduction</h3>
+<p>In this lab, time multiplexing was used to efficiently drive two seven-segment displays with a single set of FPGA I/O pins. The sum of both numbers were displayed on five separate LEDs. Additionally, transistors were used to drive large currents from the FPGA pins.</p>
+</section>
+<section id="design-and-testing" class="level3">
+<h3 class="anchored" data-anchor-id="design-and-testing">Design and Testing</h3>
+<p>The design of the time multiplexing scheme was one of the main components of this lab. Time multiplexing is a technique that is used to share a common expensive hardware resource for several purposes at different times. In this lab, time multiplexing was used to drive a single seven-segment decoder module to run both halves of a dual display.</p>
+<p>In terms of wiring, this is done by connecting a single GPIO pin on the FPGA to the same segment (e.g.&nbsp;segment e) on both the seven-segment displays. However, in order to control which half of the dual display is active, the common anode of only one display at a time is turned ON. The power to these two displays are controlled by two separate GPIO pins, which are toggled at a certain speed in order for two distinct numbers to appear simultaneously on each display. Due to the anode requiring more current than the FPGA output pin can drive, a 2N3906 PNP transistor was used to limit the base current and not draw too much from the FPGA pin. Both of the dual displays are controlled by four bit DIP switches, and the sum of both numbers is displayed as a five bit number on five separate LEDs. The hardware layout, with the breadboard and wiring as described above, is shown in Figure 1.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab2_1.jpeg" class="img-fluid figure-img"></p>
+<figcaption>Figure 1. Wiring of the dual seven-segment display, LEDs, and transistor circuits</figcaption>
+</figure>
+</div>
+<p>The wiring and breadboard layout was intuitively done to enable easy debugging and be visually appealing. In order to justify resistor choices, calcuations were done, as shown in Figure 2, to ensure proper brightness of the five individual LEDs and that the current draw/sink on all the FPGA pins was below the currents specified in the recommended operating conditions.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab2_2.jpeg" class="img-fluid figure-img"></p>
+<figcaption>Figure 2. Calculations to justify chosen resistor values for the dual seven-segment display, the five individual LEDs, and the PNP transistor</figcaption>
+</figure>
+</div>
+<p>From a software standpoint, important decisions were made in order to split up the required tasks of the lab into respective modules. A top level module was used to instantiate the on-board high-speed oscillator (HSOSC) from the iCE40 UltraPlus primitive library, which was the 48 MHz clock that was divided and used throughout the system. The top level module also contained the combinational logic for the five individual LEDs, as they were simple and therefore did not require a separate module.</p>
+<p>One of the most important design considerations was the speed at which the two displays were toggled. This was done using a clock divider and 32-bit counter, where choosing different bits of the counter in the clock division allowed for different switching speeds. After testing, it was determined that the 18th bit of the counter produced a toggling speed that ensured that both hexadecimal digits lit up simultaneously without visible oscillation and without the digits bleeding into each other. At this speed, the clock divider enabled power to each of the displays in the dual display and the four bit inputs were sent one at a time to the seven segment module.</p>
+<p>In order to verify the software, three testbenches were written with one for each module——top level, seven-segment, and multiplexer. The seven-segment testbench checked that the correct segments displayed with the corresponding four bit inpupts. The top level testbench checked that the combinational logic for the five LEDs functioned as properly. The multiplexer module checked that the input to the seven segment display was the correct four bit input corresponding to which display was enabled. The testbenches also checked the toggling of the enable signals. The waveforms are shown in the Results and Discussion section. In order to test the hardware, all switches and their summing combinational logic was tested on the breadboard. A picture from one of these tests is shown below in Figure 3.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab2_3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 3. Image from testing displaying functioning hardware. The hex digit “b” is displayed on the left, and “0” is displayed on the right, with their sum equalling 11 and being displayed on the five individual LEDs.</figcaption>
+</figure>
+</div>
+</section>
+<section id="technical-documentation" class="level3">
+<h3 class="anchored" data-anchor-id="technical-documentation">Technical Documentation</h3>
+<p>The source code for the project can be found in the associated <a href="https://github.com/shreyajampana/e155-lab2">Github repository</a>.</p>
+<section id="block-diagram" class="level4">
+<h4 class="anchored" data-anchor-id="block-diagram">Block Diagram</h4>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab2_4.jpeg" class="img-fluid figure-img"></p>
+<figcaption>Figure 4. Block diagram of the Verilog module</figcaption>
+</figure>
+</div>
+<p>The block diagram shown in Figure 4 demonstrates the overall architecture of the design. The top-level module includes three submodules: the high-speed oscillator block (HSOSC), the seven-segment module to operate the 7-segment display, and the multiplexer module to operate the correct switching/toggling of the dual displays.</p>
+</section>
+<section id="schematic" class="level4">
+<h4 class="anchored" data-anchor-id="schematic">Schematic</h4>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab2_5.jpeg" class="img-fluid figure-img"></p>
+<figcaption>Figure 5. Schematic of the physical circuit</figcaption>
+</figure>
+</div>
+<p>The physical layout of the design is shown in Figure 5. The left side of the UPduino shows the inputs, which are the reset and two sets of four-input DIP switches with an internal 100 kΩ pullup resistor to ensure the active low reset pin was not floating. The right side shows the outputs, which are the GPIO pins connecting the transistors to power, the two enables, the seven segments, and the five LEDs. All of the LEDs and transistors are connected to current-limiting resistors, the calculations for which are shown above in Figure 2.</p>
+</section>
+</section>
+<section id="results-and-discussion" class="level3">
+<h3 class="anchored" data-anchor-id="results-and-discussion">Results and Discussion</h3>
+<section id="testbench-simulation" class="level4">
+<h4 class="anchored" data-anchor-id="testbench-simulation">Testbench Simulation</h4>
+<p>Three testbenches were written in SystemVerilog, one for each of the modules (top level, multiplexer, and seven-segment), in order to show that the combinational logic works and that the enables toggle and produce the correct, corresponding display.</p>
+<p>As shown in the simulation images below, all the simulations passed and produced the expected outputs. Figures 6 and 7 show the simulation waveforms for the top level module. Figure 6 shows that the led variable is the correct sum of the 8-bit counter input. Figure 7 shows that when zoomed out, the enable toggles and tests the other cases. Figure 8 shows that s (input to the seven-segment module) gets the correct four bit input during the correct enable. In the waveforms, it is visible that the value of four bits of s_counter (the input) match the value of s one clock cycle later. This makes sense because s is an output of the multiplexer module, and thus displays its value one clock cycle later. Similar to the top level, zooming out shows that the enable switches as expected to test all the other cases. Figure 10 shows the seven-segment waveforms also producing the expected outputs for the segment values on the display.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab2_top_sim.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 6. Top-level module QuestaSim simulation showing correct combinational logic</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab2_top_sim2.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 7. Zoomed-out view of top-level module QuestaSim simulation showing the enables switching</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab2_mux_sim.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 8. Multiplexer module QuestaSim simulation showing the seven-segment getting the correct input</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab2_mux_sim2.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 9. Zoomed-out view of multiplexer module QuestaSim simulation showing the enables switching</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab1_6.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 10. Seven-segment module QuestaSim simulation</figcaption>
+</figure>
+</div>
+<p>Therefore, the design met all of the intended design objectives, and performed quickly and reliably. The simulations shown below ran in a few seconds, and the hardware displayed all the required LEDs brightly.</p>
+</section>
+</section>
+<section id="conclusion" class="level3">
+<h3 class="anchored" data-anchor-id="conclusion">Conclusion</h3>
+<p>My FPGA designs successfully controlled a time multiplexing scheme to drive two 7-segment displays with a single set of FPGA I/O pins. A transistor to drive large currents from the FPGA pins was also successfully implemented. Additionally, I gained a lot of experience with building testbenches and modular Verilog systems.</p>
+<p>In total, I spent 21 hours on this lab.</p>
+</section>
+<section id="ai-prototype" class="level3">
+<h3 class="anchored" data-anchor-id="ai-prototype">AI Prototype</h3>
+<p>Upon typing the following prompt into ChatGPT, the following code was generated:</p>
+<p>Prompt: Write SystemVerilog HDL to time multiplex a single seven segment decoder (that decodes from four bits to a common anode seven segment display) to decode two sets of input bits and drive two sets of seven output bits.</p>
+<p>Code:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode systemverilog code-with-copy"><code class="sourceCode systemverilog"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// -----------------------------------------------------------------------------</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">// Common–anode 7-segment decoder (active LOW segments)</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co">// seg_n order = {a,b,c,d,e,f,g}</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">// -----------------------------------------------------------------------------</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> sevenseg_ca_decode (</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">input</span>  <span class="kw">logic</span> [<span class="dv">3</span>:<span class="dv">0</span>] x,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">output</span> <span class="kw">logic</span> [<span class="dv">6</span>:<span class="dv">0</span>] seg_n</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="kw">always_comb</span> <span class="kw">begin</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">unique</span> <span class="kw">case</span> (x)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'h0</span>: seg_n = <span class="bn">7'b0000001</span>;</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'h1</span>: seg_n = <span class="bn">7'b1001111</span>;</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'h2</span>: seg_n = <span class="bn">7'b0010010</span>;</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'h3</span>: seg_n = <span class="bn">7'b0000110</span>;</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'h4</span>: seg_n = <span class="bn">7'b1001100</span>;</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'h5</span>: seg_n = <span class="bn">7'b0100100</span>;</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'h6</span>: seg_n = <span class="bn">7'b0100000</span>;</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'h7</span>: seg_n = <span class="bn">7'b0001111</span>;</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'h8</span>: seg_n = <span class="bn">7'b0000000</span>;</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'h9</span>: seg_n = <span class="bn">7'b0000100</span>;</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'hA</span>: seg_n = <span class="bn">7'b0001000</span>;</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'hB</span>: seg_n = <span class="bn">7'b1100000</span>; <span class="co">// 'b' as 11</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'hC</span>: seg_n = <span class="bn">7'b0110001</span>;</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'hD</span>: seg_n = <span class="bn">7'b1000010</span>; <span class="co">// 'd' as 13</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'hE</span>: seg_n = <span class="bn">7'b0110000</span>;</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>      <span class="bn">4'hF</span>: seg_n = <span class="bn">7'b0111000</span>;</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>      <span class="kw">default</span>: seg_n = <span class="bn">7'b1111111</span>; <span class="co">// all OFF</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>    <span class="kw">endcase</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  <span class="kw">end</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="kw">endmodule</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">// -----------------------------------------------------------------------------</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">// Two-channel time-multiplexer using a single decoder instance</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co">//  - Alternates between in0 and in1 at a programmable rate</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co">//  - Latches each decoded pattern into seg0_n/seg1_n registers</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="co">//  - Outputs are stable between refresh ticks (no comb fanout from muxed input)</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">// -----------------------------------------------------------------------------</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> sevenseg_twoch_tmux #(</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Adjust these to set the update rate.</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Example: at 25 MHz, DIV=125_000 gives a 200 Hz tick (each channel ~100 Hz).</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>  <span class="kw">parameter</span> <span class="kw">int</span> <span class="kw">unsigned</span> DIV = <span class="dv">125</span>_000</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>) (</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>  <span class="kw">input</span>  <span class="kw">logic</span>        clk,</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>  <span class="kw">input</span>  <span class="kw">logic</span>        rst_n,</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>  <span class="kw">input</span>  <span class="kw">logic</span> [<span class="dv">3</span>:<span class="dv">0</span>]  in0,</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>  <span class="kw">input</span>  <span class="kw">logic</span> [<span class="dv">3</span>:<span class="dv">0</span>]  in1,</span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>  <span class="kw">output</span> <span class="kw">logic</span> [<span class="dv">6</span>:<span class="dv">0</span>]  seg0_n,  <span class="co">// decoded output for in0 (active LOW)</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>  <span class="kw">output</span> <span class="kw">logic</span> [<span class="dv">6</span>:<span class="dv">0</span>]  seg1_n   <span class="co">// decoded output for in1 (active LOW)</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Clock divider to make a refresh "tick"</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>  <span class="kw">logic</span> [<span class="kw">$clog2</span>(DIV)-<span class="dv">1</span>:<span class="dv">0</span>] div_cnt;</span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>  <span class="kw">logic</span>                   tick;</span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>  <span class="kw">always_ff</span> @(<span class="kw">posedge</span> clk <span class="kw">or</span> <span class="kw">negedge</span> rst_n) <span class="kw">begin</span></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> (!rst_n) <span class="kw">begin</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>      div_cnt &lt;= '<span class="dv">0</span>;</span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>      tick    &lt;= <span class="bn">1'b0</span>;</span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>    <span class="kw">end</span> <span class="kw">else</span> <span class="kw">if</span> (div_cnt == DIV<span class="dv">-1</span>) <span class="kw">begin</span></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>      div_cnt &lt;= '<span class="dv">0</span>;</span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a>      tick    &lt;= <span class="bn">1'b1</span>;</span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a>    <span class="kw">end</span> <span class="kw">else</span> <span class="kw">begin</span></span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a>      div_cnt &lt;= div_cnt + <span class="bn">1'b1</span>;</span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a>      tick    &lt;= <span class="bn">1'b0</span>;</span>
+<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a>    <span class="kw">end</span></span>
+<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a>  <span class="kw">end</span></span>
+<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Channel select toggles each tick</span></span>
+<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a>  <span class="kw">logic</span> sel;  <span class="co">// 0 -&gt; service in0, 1 -&gt; service in1</span></span>
+<span id="cb1-73"><a href="#cb1-73" aria-hidden="true" tabindex="-1"></a>  <span class="kw">always_ff</span> @(<span class="kw">posedge</span> clk <span class="kw">or</span> <span class="kw">negedge</span> rst_n) <span class="kw">begin</span></span>
+<span id="cb1-74"><a href="#cb1-74" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> (!rst_n) sel &lt;= <span class="bn">1'b0</span>;</span>
+<span id="cb1-75"><a href="#cb1-75" aria-hidden="true" tabindex="-1"></a>    <span class="kw">else</span> <span class="kw">if</span> (tick) sel &lt;= ~sel;</span>
+<span id="cb1-76"><a href="#cb1-76" aria-hidden="true" tabindex="-1"></a>  <span class="kw">end</span></span>
+<span id="cb1-77"><a href="#cb1-77" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-78"><a href="#cb1-78" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Single decoder instance, input multiplexed</span></span>
+<span id="cb1-79"><a href="#cb1-79" aria-hidden="true" tabindex="-1"></a>  <span class="kw">logic</span> [<span class="dv">3</span>:<span class="dv">0</span>] muxed_in;</span>
+<span id="cb1-80"><a href="#cb1-80" aria-hidden="true" tabindex="-1"></a>  <span class="kw">logic</span> [<span class="dv">6</span>:<span class="dv">0</span>] dec_out_n;</span>
+<span id="cb1-81"><a href="#cb1-81" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-82"><a href="#cb1-82" aria-hidden="true" tabindex="-1"></a>  <span class="kw">assign</span> muxed_in = sel ? in1 : in0;</span>
+<span id="cb1-83"><a href="#cb1-83" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-84"><a href="#cb1-84" aria-hidden="true" tabindex="-1"></a>  sevenseg_ca_decode u_dec (</span>
+<span id="cb1-85"><a href="#cb1-85" aria-hidden="true" tabindex="-1"></a>    .x     (muxed_in),</span>
+<span id="cb1-86"><a href="#cb1-86" aria-hidden="true" tabindex="-1"></a>    .seg_n (dec_out_n)</span>
+<span id="cb1-87"><a href="#cb1-87" aria-hidden="true" tabindex="-1"></a>  );</span>
+<span id="cb1-88"><a href="#cb1-88" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-89"><a href="#cb1-89" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Register each channel's pattern when it is serviced</span></span>
+<span id="cb1-90"><a href="#cb1-90" aria-hidden="true" tabindex="-1"></a>  <span class="co">// This removes glitches and gives each output a steady value</span></span>
+<span id="cb1-91"><a href="#cb1-91" aria-hidden="true" tabindex="-1"></a>  <span class="kw">always_ff</span> @(<span class="kw">posedge</span> clk <span class="kw">or</span> <span class="kw">negedge</span> rst_n) <span class="kw">begin</span></span>
+<span id="cb1-92"><a href="#cb1-92" aria-hidden="true" tabindex="-1"></a>    <span class="kw">if</span> (!rst_n) <span class="kw">begin</span></span>
+<span id="cb1-93"><a href="#cb1-93" aria-hidden="true" tabindex="-1"></a>      seg0_n &lt;= <span class="bn">7'h7F</span>;  <span class="co">// all off</span></span>
+<span id="cb1-94"><a href="#cb1-94" aria-hidden="true" tabindex="-1"></a>      seg1_n &lt;= <span class="bn">7'h7F</span>;</span>
+<span id="cb1-95"><a href="#cb1-95" aria-hidden="true" tabindex="-1"></a>    <span class="kw">end</span> <span class="kw">else</span> <span class="kw">if</span> (tick) <span class="kw">begin</span></span>
+<span id="cb1-96"><a href="#cb1-96" aria-hidden="true" tabindex="-1"></a>      <span class="kw">if</span> (sel)  seg1_n &lt;= dec_out_n; <span class="co">// just decoded in1</span></span>
+<span id="cb1-97"><a href="#cb1-97" aria-hidden="true" tabindex="-1"></a>      <span class="kw">else</span>      seg0_n &lt;= dec_out_n; <span class="co">// just decoded in0</span></span>
+<span id="cb1-98"><a href="#cb1-98" aria-hidden="true" tabindex="-1"></a>    <span class="kw">end</span></span>
+<span id="cb1-99"><a href="#cb1-99" aria-hidden="true" tabindex="-1"></a>  <span class="kw">end</span></span>
+<span id="cb1-100"><a href="#cb1-100" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-101"><a href="#cb1-101" aria-hidden="true" tabindex="-1"></a><span class="kw">endmodule</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>The LLM-generated code was synthesized the first time around in Radiant. It did take a longer time to synthesize than code that I’ve written, but there were no errors.</p>
+<p>The hierarchy of the code it generated was different than mine, as it only had two modules, and mine had three. The seven segment module it wrote was pretty identical to my seven segment module, but the top level in the LLM-generated code (which included my multiplexer module functionality as well) was quite different. One of the main differences was that it didn’t use the on-board high speed oscillator for the clock and instead generated and used a new clock divider. It used a variable called “DIV,” which is told us to adjust to set the update or switching rate. The LLM-generated code also had two signals for enabling that performed the multiplexing, but it had two seven bit outputs instead of one. The generated code was pretty different than mine in terms of syntax, hierarchy, and implementation, but it was interesting to see that it does the same function (more or less) and compiles without errors.</p>
+<p>Next, I started a new conversation in ChatGPT and uploaded the following prompt along with my lab 1 files (all source files) as context to get the LLM-generated code shown below.</p>
+<p>Prompt: Write SystemVerilog HDL to time multiplex a single seven segment decoder (that decodes from four bits to a common anode seven segment display) to decode two sets of input bits and drive two sets of seven output bits. Use the seven segment decoder and oscillator provided in the attached files.</p>
+<p>Code:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode systemverilog code-with-copy"><code class="sourceCode systemverilog"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// dual_sevenseg_mux.sv</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co">// Time-multiplex a single 7-seg decoder across two 4-bit inputs and</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co">// drive two independent 7-bit (common-anode) segment buses.</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> dual_sevenseg_mux #(</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Internal oscillator nominal frequency (UP5K HFOSC ~48 MHz)</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">parameter</span> <span class="kw">int</span> <span class="kw">unsigned</span> CLK_HZ      = <span class="dv">48</span>_000_000,</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Per-digit refresh rate (how often each digit is updated)</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">parameter</span> <span class="kw">int</span> <span class="kw">unsigned</span> REFRESH_HZ  = <span class="dv">1</span>_000</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>)(</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">input</span>  <span class="kw">logic</span>        rst_n,          <span class="co">// active-low async reset (tie high if unused)</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">input</span>  <span class="kw">logic</span> [<span class="dv">3</span>:<span class="dv">0</span>]  in0,            <span class="co">// nibble for "left" display</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">input</span>  <span class="kw">logic</span> [<span class="dv">3</span>:<span class="dv">0</span>]  in1,            <span class="co">// nibble for "right" display</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">output</span> <span class="kw">logic</span> [<span class="dv">6</span>:<span class="dv">0</span>]  seg0,           <span class="co">// segments for display 0 (common anode: active-low segments)</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">output</span> <span class="kw">logic</span> [<span class="dv">6</span>:<span class="dv">0</span>]  seg1            <span class="co">// segments for display 1</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="co">// ----------------------------------------------------------------</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Internal high-speed oscillator (Lattice iCE40 UP family primitive)</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="co">// ----------------------------------------------------------------</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="kw">logic</span> clk_hf;</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    HSOSC hf_osc (</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>        .CLKHFPU (<span class="bn">1'b1</span>),   <span class="co">// power up</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>        .CLKHFEN (<span class="bn">1'b1</span>),   <span class="co">// enable</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>        .CLKHF   (clk_hf)  <span class="co">// ~48 MHz clock out</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    );</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    <span class="co">// ---------------------------------------------------------------</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Refresh tick generator (sets the multiplexing cadence)</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Each digit is updated at REFRESH_HZ, so the decoder input</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    <span class="co">// switches at 2*REFRESH_HZ overall.</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    <span class="co">// ---------------------------------------------------------------</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    <span class="kw">localparam</span> <span class="kw">int</span> <span class="kw">unsigned</span> TICKS_PER_REFRESH = CLK_HZ / REFRESH_HZ;</span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>    <span class="kw">localparam</span> <span class="kw">int</span> <span class="kw">unsigned</span> CNTW = <span class="kw">$clog2</span>(TICKS_PER_REFRESH);</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>    <span class="kw">logic</span> [CNTW<span class="dv">-1</span>:<span class="dv">0</span>] tick_cnt;</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>    <span class="kw">logic</span>            refresh_tick;</span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>    <span class="kw">always_ff</span> @(<span class="kw">posedge</span> clk_hf <span class="kw">or</span> <span class="kw">negedge</span> rst_n) <span class="kw">begin</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>        <span class="kw">if</span> (!rst_n) <span class="kw">begin</span></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>            tick_cnt     &lt;= '<span class="dv">0</span>;</span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>            refresh_tick &lt;= <span class="bn">1'b0</span>;</span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>        <span class="kw">end</span> <span class="kw">else</span> <span class="kw">begin</span></span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>            <span class="kw">if</span> (tick_cnt == TICKS_PER_REFRESH<span class="dv">-1</span>) <span class="kw">begin</span></span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>                tick_cnt     &lt;= '<span class="dv">0</span>;</span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>                refresh_tick &lt;= <span class="bn">1'b1</span>;</span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>            <span class="kw">end</span> <span class="kw">else</span> <span class="kw">begin</span></span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a>                tick_cnt     &lt;= tick_cnt + <span class="bn">1'b1</span>;</span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a>                refresh_tick &lt;= <span class="bn">1'b0</span>;</span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>            <span class="kw">end</span></span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>        <span class="kw">end</span></span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a>    <span class="kw">end</span></span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>    <span class="co">// ---------------------------------------------------------------</span></span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Single decoder instance, input mux, and latched outputs</span></span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a>    <span class="co">// ---------------------------------------------------------------</span></span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a>    <span class="kw">logic</span>        sel;           <span class="co">// 0 -&gt; in0 path active, 1 -&gt; in1 path active</span></span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a>    <span class="kw">logic</span> [<span class="dv">3</span>:<span class="dv">0</span>]  mux_in;        <span class="co">// presented to the decoder</span></span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a>    <span class="kw">logic</span> [<span class="dv">6</span>:<span class="dv">0</span>]  dec_out;       <span class="co">// raw decoder output (active-low segments)</span></span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Feed one nibble at a time into the single decoder</span></span>
+<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a>    <span class="kw">assign</span> mux_in = (sel == <span class="bn">1'b0</span>) ? in0 : in1;</span>
+<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Your provided seven-seg decoder (common-anode) — adjust names if needed.</span></span>
+<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a>    seven_seg_sj u_dec (</span>
+<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a>        .value (mux_in),</span>
+<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a>        .seg   (dec_out)</span>
+<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a>    );</span>
+<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-72"><a href="#cb2-72" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Registers to hold each display’s last-decoded segments</span></span>
+<span id="cb2-73"><a href="#cb2-73" aria-hidden="true" tabindex="-1"></a>    <span class="kw">logic</span> [<span class="dv">6</span>:<span class="dv">0</span>] seg0_r, seg1_r;</span>
+<span id="cb2-74"><a href="#cb2-74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-75"><a href="#cb2-75" aria-hidden="true" tabindex="-1"></a>    <span class="co">// On each refresh tick:</span></span>
+<span id="cb2-76"><a href="#cb2-76" aria-hidden="true" tabindex="-1"></a>    <span class="co">//  - latch current decoder output into the register corresponding to `sel`</span></span>
+<span id="cb2-77"><a href="#cb2-77" aria-hidden="true" tabindex="-1"></a>    <span class="co">//  - then toggle `sel` so the *other* nibble is decoded next period</span></span>
+<span id="cb2-78"><a href="#cb2-78" aria-hidden="true" tabindex="-1"></a>    <span class="kw">always_ff</span> @(<span class="kw">posedge</span> clk_hf <span class="kw">or</span> <span class="kw">negedge</span> rst_n) <span class="kw">begin</span></span>
+<span id="cb2-79"><a href="#cb2-79" aria-hidden="true" tabindex="-1"></a>        <span class="kw">if</span> (!rst_n) <span class="kw">begin</span></span>
+<span id="cb2-80"><a href="#cb2-80" aria-hidden="true" tabindex="-1"></a>            sel   &lt;= <span class="bn">1'b0</span>;</span>
+<span id="cb2-81"><a href="#cb2-81" aria-hidden="true" tabindex="-1"></a>            seg0_r &lt;= <span class="bn">7'h7F</span>;   <span class="co">// all OFF for common-anode (active-low)</span></span>
+<span id="cb2-82"><a href="#cb2-82" aria-hidden="true" tabindex="-1"></a>            seg1_r &lt;= <span class="bn">7'h7F</span>;</span>
+<span id="cb2-83"><a href="#cb2-83" aria-hidden="true" tabindex="-1"></a>        <span class="kw">end</span> <span class="kw">else</span> <span class="kw">if</span> (refresh_tick) <span class="kw">begin</span></span>
+<span id="cb2-84"><a href="#cb2-84" aria-hidden="true" tabindex="-1"></a>            <span class="kw">if</span> (sel == <span class="bn">1'b0</span>) <span class="kw">begin</span></span>
+<span id="cb2-85"><a href="#cb2-85" aria-hidden="true" tabindex="-1"></a>                seg0_r &lt;= dec_out; <span class="co">// we were decoding in0; capture for seg0</span></span>
+<span id="cb2-86"><a href="#cb2-86" aria-hidden="true" tabindex="-1"></a>            <span class="kw">end</span> <span class="kw">else</span> <span class="kw">begin</span></span>
+<span id="cb2-87"><a href="#cb2-87" aria-hidden="true" tabindex="-1"></a>                seg1_r &lt;= dec_out; <span class="co">// we were decoding in1; capture for seg1</span></span>
+<span id="cb2-88"><a href="#cb2-88" aria-hidden="true" tabindex="-1"></a>            <span class="kw">end</span></span>
+<span id="cb2-89"><a href="#cb2-89" aria-hidden="true" tabindex="-1"></a>            sel &lt;= ~sel; <span class="co">// switch to decode the other input next</span></span>
+<span id="cb2-90"><a href="#cb2-90" aria-hidden="true" tabindex="-1"></a>        <span class="kw">end</span></span>
+<span id="cb2-91"><a href="#cb2-91" aria-hidden="true" tabindex="-1"></a>    <span class="kw">end</span></span>
+<span id="cb2-92"><a href="#cb2-92" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-93"><a href="#cb2-93" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Drive outputs</span></span>
+<span id="cb2-94"><a href="#cb2-94" aria-hidden="true" tabindex="-1"></a>    <span class="kw">assign</span> seg0 = seg0_r;</span>
+<span id="cb2-95"><a href="#cb2-95" aria-hidden="true" tabindex="-1"></a>    <span class="kw">assign</span> seg1 = seg1_r;</span>
+<span id="cb2-96"><a href="#cb2-96" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-97"><a href="#cb2-97" aria-hidden="true" tabindex="-1"></a><span class="kw">endmodule</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>This LLM-generated code did synthesize relatively quickly but had one error—that it was instantiating an unknown module seven_seg_sj. This was a mistake on my part because I didn’t add my module into the project. Besides this, the code looks pretty similar to mine. It uses the high speed oscillator and chooses the correct dual display based on the enable. Once again, it does have two 7-bit outputs while I have one, and it also uses syntax I’m not familiar with. But overall, it was efficient code, and was even more similar to mine when I inputted my lab 1 files.</p>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->
@@ -245,7 +597,7 @@ ul.task-list li input[type="checkbox"] {
     }
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
       var mailtoRegex = new RegExp(/^mailto:/);
-        var filterRegex = new RegExp('/' + window.location.host + '/');
+        var filterRegex = new RegExp("https:\/\/shreyajampana\.github\.io\/e155-portflio\/");
       var isInternal = (href) => {
           return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
       }
