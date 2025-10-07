@@ -160,6 +160,10 @@ ul.task-list li input[type="checkbox"] {
   <ul class="collapse">
   <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction">Introduction</a></li>
   <li><a href="#design-and-testing" id="toc-design-and-testing" class="nav-link" data-scroll-target="#design-and-testing">Design and Testing</a></li>
+  <li><a href="#technical-documentation" id="toc-technical-documentation" class="nav-link" data-scroll-target="#technical-documentation">Technical Documentation</a></li>
+  <li><a href="#results-and-discussion" id="toc-results-and-discussion" class="nav-link" data-scroll-target="#results-and-discussion">Results and Discussion</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#ai-prototype" id="toc-ai-prototype" class="nav-link" data-scroll-target="#ai-prototype">AI Prototype</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -178,6 +182,198 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="design-and-testing" class="level3">
 <h3 class="anchored" data-anchor-id="design-and-testing">Design and Testing</h3>
+<section id="quadrature-encoder-background" class="level4">
+<h4 class="anchored" data-anchor-id="quadrature-encoder-background">Quadrature Encoder Background</h4>
+<p>An encoder is a sensor that converts physical motion into electrical signals. A quadrature encoder is a common type of encoder that is used to measure the relative or absolute angle of a motor. They do this with the use of a patterned disk that is attached to the motor and spins with the motor. As shown in Figure 1 below, two stationary digital sensors 90 degrees out of phase are placed to produce two square waves that are 90 degrees out of phase with each other. The encoders used in this lab use magnets and hall effect sensors to produce the square waves. Using this theory and understanding, I designed my system to take full advantage of both signals to get the highest resolution measurement of the speed of the motor.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab5_1.jpeg" class="img-fluid figure-img"></p>
+<figcaption>Figure 1. Diagram of quadrature encoder [Avnet Silica]</figcaption>
+</figure>
+</div>
+</section>
+<section id="interrupt-design" class="level4">
+<h4 class="anchored" data-anchor-id="interrupt-design">Interrupt Design</h4>
+<p>In order to check the signals from the encoder and measure the speed of the motor, I used interrupts instead of polling. Polling involves continuously checking the status of the GPIO pins to detect whether or not the encoder output changed. This means the speed of taking a measurement is dependent on the time it takes all the commmands in the while loop to execute. This is problematic because if the code in the main loop is executing of a delay is being executed, you could miss the signal coming from the GPIO pin. This can cause timing issues and lead to inaccurate motor speeds being recorded due to sampling not happening fast/accurately enough. This problem can be overrided by using interrupts. Interrupts are event-driven instead of time-driven. This means that when the interrupt goes high, the CPU jumps to that address and the main/current execution context is paused as the interrupt is executed. After it’s done, it returns back to the main code and continues where it left off. By doing this, interrupts give immediate attention to signal changes and ensure that all measurements are registered and correspond exactly to encoder changes. Some math to back up this understanding is shown below in Figure 2.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab5_2.jpeg" class="img-fluid figure-img"></p>
+<figcaption>Figure 2. Interrupt vs.&nbsp;Polling Calculations</figcaption>
+</figure>
+</div>
+<p>In order to achieve the highest resolution measurement, I used all edges of the encoder pulses. I did this by using two interrupts, one for Encoder A and one for Encoder B. Each encoder checked for the following four cases: clockwise rising edge, counter-clockwise rising edge, clockwise falling edge, and counter-clockwise falling edge. A counter was also used, which is explained more in the next section. The main steps of the program and the function calls are shown below in the flowchart in Figure 3.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab5_3.jpeg" class="img-fluid figure-img"></p>
+<figcaption>Figure 3. Lab 5 Program Flowchart</figcaption>
+</figure>
+</div>
+</section>
+<section id="software-and-calculations" class="level4">
+<h4 class="anchored" data-anchor-id="software-and-calculations">Software and Calculations</h4>
+<p>The interrupt design, described above, was the main portion of the software. Another important part was incorporating the counter into the interrupt and using that to calculate velocity. As mentioned above, each interrupt had four cases. In each case, if the motion was clockwise, the counter incremented. If the motion was counter-clockwise, the counter decreased. A graphical illustration of this using the signals from the encoder are shown below in Figure 4.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab5_4.jpeg" class="img-fluid figure-img"></p>
+<figcaption>Figure 4. Encoder signals edges for CW and CCW rotation</figcaption>
+</figure>
+</div>
+<p>The following equation was used to determine the speed of the motor based on the counter: velocity = counter / (PPR * 4).</p>
+</section>
+<section id="verification" class="level4">
+<h4 class="anchored" data-anchor-id="verification">Verification</h4>
+<p>In order to make sure the measured speed matches the true motor speed and direction, I calculated the theoretical speed of the motor, hooked my motor up to the oscilloscope, and checked this against the values that my code output. From the datasheet, we know that at 12 V and 408 PPR, the speed of the motor should be 2.5 revolutions per second. Connecting the motor to the oscilloscope, I saw the following output, as shown in Figure 5.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab5_5.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 5. Motor encoder signals at 12 V</figcaption>
+</figure>
+</div>
+<p>As shown on the oscilloscope screen, the output signal has a period of 848us. Calculations are shown below in Figure 6 to derive the speed of the motor using this value.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab5_6.jpeg" class="img-fluid figure-img"></p>
+<figcaption>Figure 6. Speed of motor from oscilloscope</figcaption>
+</figure>
+</div>
+<p>At this same voltage, the following speed of motor was output from my code, with each measurement being taken one second apart.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab5_7.jpeg" class="img-fluid figure-img"></p>
+<figcaption>Figure 7. Speed of motor from code</figcaption>
+</figure>
+</div>
+<p>All of these calculations are close to each other. The variation between the speed of the motor from the oscilloscope and that from the code is very small, and could be due to the motor speed itself fluctuating and not spinning at the same frequency. Also, signal capture on the oscilloscope can’t be verified, so it’s hard to determine if I’m capturing at the same rate on both the oscilloscope and on my console. Give this, I’m happy with the small variation and error rate between expected and measured.</p>
+</section>
+</section>
+<section id="technical-documentation" class="level3">
+<h3 class="anchored" data-anchor-id="technical-documentation">Technical Documentation</h3>
+<p>The source code for the project can be found in the associated <a href="https://github.com/shreyajampana/e155-lab5">Github repository</a>.</p>
+<section id="schematic" class="level4">
+<h4 class="anchored" data-anchor-id="schematic">Schematic</h4>
+<p>The circuit from this lab was very simple, as shown in the schematic below in Figure 8. It only consisted of connecting the motor encoder to the two MCU GPIO pins and a variable DC voltage +/- Vs being applied to the positive terminal of the motor from a power supply.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/lab5_8.jpeg" class="img-fluid figure-img"></p>
+<figcaption>Figure 8. Lab 5 Schematic</figcaption>
+</figure>
+</div>
+</section>
+</section>
+<section id="results-and-discussion" class="level3">
+<h3 class="anchored" data-anchor-id="results-and-discussion">Results and Discussion</h3>
+<p>The design met all the intended objectives. After becoming comfortable with how to use the datasheet and reference manual for the MCU, this lab went by much smoother on the software end. The biggest point of confusion was understanding interrupts conceptually, but after that was done, the lab went by pretty smoothly. The final results are shown in the video below, with speed being output once per second on the console.</p>
+<div class="quarto-video ratio ratio-16x9"><iframe data-external="1" src="https://www.youtube.com/embed/2aJs_RmUtGY" title="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe></div>
+</section>
+<section id="conclusion" class="level3">
+<h3 class="anchored" data-anchor-id="conclusion">Conclusion</h3>
+<p>I gained even more experience with my MCU in this lab. Learning more about interrupts also taught me how to properly read and process fast changes in order to make the most accurate measurements. In total, this lab took me 9 hours to complete.</p>
+</section>
+<section id="ai-prototype" class="level3">
+<h3 class="anchored" data-anchor-id="ai-prototype">AI Prototype</h3>
+<p>This was the prompt for ChatGPT for this lab: Write me interrupt handlers to interface with a quadrature encoder. I’m using the STM32L432KC, what pins should I connect the encoder to in order to allow it to easily trigger the interrupts?</p>
+<p>This was its response and code:</p>
+<p><img src="images/lab5_9.jpg" class="img-fluid" alt="AI"> <img src="images/lab5_10.jpg" class="img-fluid" alt="AI"></p>
+<pre><code>// quadrature_exti.c
+#include "stm32l4xx_hal.h"
+
+// === User options ===
+#define QUAD_REVERSE 0   // set to 1 to invert direction if needed
+
+volatile int32_t g_encoder_pos = 0;   // 4x counts
+volatile uint32_t g_last_edge_us = 0; // optional: for simple deglitching if desired
+
+// Forward decls
+static void MX_GPIO_Quad_Init(void);
+
+// Call this from your main init
+void Quad_Init(void) {
+    MX_GPIO_Quad_Init();
+}
+
+// --- GPIO + EXTI init for PA0/PA1 (A/B), optional PA2 (Z) ---
+static void MX_GPIO_Quad_Init(void)
+{
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_SYSCFG_CLK_ENABLE();
+
+    GPIO_InitTypeDef gi = {0};
+
+    // Configure PA0 (A) and PA1 (B) as inputs with pull-ups and EXTI on both edges
+    gi.Mode  = GPIO_MODE_IT_RISING_FALLING;
+    gi.Pull  = GPIO_PULLUP;            // or PULLDOWN to match your encoder; many encoders are open-collector -&gt; use PULLUP
+    gi.Speed = GPIO_SPEED_FREQ_HIGH;
+
+    gi.Pin   = GPIO_PIN_0; HAL_GPIO_Init(GPIOA, &amp;gi);  // A
+    gi.Pin   = GPIO_PIN_1; HAL_GPIO_Init(GPIOA, &amp;gi);  // B
+
+    // Optional index Z on PA2
+    // gi.Pin   = GPIO_PIN_2; HAL_GPIO_Init(GPIOA, &amp;gi);
+
+    // NVIC: each line has its own IRQ, keeps ISRs short
+    HAL_NVIC_SetPriority(EXTI0_IRQn, 3, 0);
+    HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+    HAL_NVIC_SetPriority(EXTI1_IRQn, 3, 0);
+    HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
+    // Optional EXTI2 for index
+    // HAL_NVIC_SetPriority(EXTI2_IRQn, 3, 0);
+    // HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+}
+
+// --- Direction logic helpers ---
+// If A changed: dir = (A == B) ? -1 : +1
+// If B changed: dir = (A == B) ? +1 : -1
+// (This matches a common quadrature phase; flip with QUAD_REVERSE if it’s backward.)
+
+static inline void quad_on_A_edge(void)
+{
+    uint8_t A = (uint8_t)HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
+    uint8_t B = (uint8_t)HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1);
+    int step = (A == B) ? -1 : +1;
+#if QUAD_REVERSE
+    step = -step;
+#endif
+    g_encoder_pos += step;
+}
+
+static inline void quad_on_B_edge(void)
+{
+    uint8_t A = (uint8_t)HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
+    uint8_t B = (uint8_t)HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1);
+    int step = (A == B) ? +1 : -1;
+#if QUAD_REVERSE
+    step = -step;
+#endif
+    g_encoder_pos += step;
+}
+
+// --- ISRs ---
+void EXTI0_IRQHandler(void)  // A on PA0
+{
+    if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_0) != 0u) {
+        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_0);
+        quad_on_A_edge();
+    }
+}
+
+void EXTI1_IRQHandler(void)  // B on PA1
+{
+    if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_1) != 0u) {
+        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_1);
+        quad_on_B_edge();
+    }
+}
+
+// Optional: index Z zeroing, both edges or rising only as you prefer
+// void EXTI2_IRQHandler(void)
+// {
+//     if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_2) != 0u) {
+//         __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_2);
+//         g_encoder_pos = 0;  // or latch index, etc.
+//     }
+// }</code></pre>
 
 
 </section>
@@ -256,7 +452,7 @@ ul.task-list li input[type="checkbox"] {
     }
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
       var mailtoRegex = new RegExp(/^mailto:/);
-        var filterRegex = new RegExp('/' + window.location.host + '/');
+        var filterRegex = new RegExp("https:\/\/shreyajampana\.github\.io\/e155-portflio\/");
       var isInternal = (href) => {
           return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
       }
