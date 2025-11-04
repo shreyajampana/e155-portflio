@@ -170,3 +170,5 @@ void EXTI1_IRQHandler(void)  // B on PA1
 // }
 ```
 
+This code did not include the libraries and was not written in a form to be properly integrated into my main code. Therefore, I gave it my libraries and code to go based off of but then, it didn't produce original ideas. 
+

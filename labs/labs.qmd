@@ -13,5 +13,3 @@ Lab 4 - Digital Audio
 Lab 5 - Interrupts
 
 Lab 6 - The Internet of Things and Serial Peripheral Interface
-
-Lab 7 - The Advanced Encryption Standard (AES)
